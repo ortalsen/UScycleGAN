@@ -217,9 +217,9 @@ class cyclegan(object):
             feed_dict={self.real_data: sample_images}
         )
         save_images(fake_A, [self.batch_size, 1],
-                    './{}/A_{:02d}_{:04d}.jpg'.format(sample_dir, epoch, idx))
+                    './{}/A_{:02d}_{:04d}.jpg'.format(sample_dir, epoch, idx), is_us = False)
         save_images(fake_B, [self.batch_size, 1],
-                    './{}/B_{:02d}_{:04d}.jpg'.format(sample_dir, epoch, idx))
+                    './{}/B_{:02d}_{:04d}.jpg'.format(sample_dir, epoch, idx), is_us = True)
 
     def test(self, args):
         """Test cyclegan"""

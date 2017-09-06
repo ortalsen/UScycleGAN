@@ -53,23 +53,25 @@ def load_train_data(image_path, load_size=286, fine_size=256, is_testing=False, 
     if img_format=='mat':
         img_A = matread(image_path[0])
         img_B = matread(image_path[1])
-        if not is_testing:
+        '''if not is_testing:
             img_A = np.resize(img_A, [load_size, load_size])
             img_B = np.resize(img_B, [load_size, load_size])
             h1 = int(np.ceil(np.random.uniform(1e-2, load_size - fine_size)))
             w1 = int(np.ceil(np.random.uniform(1e-2, load_size - fine_size)))
             img_A = img_A[h1:h1 + fine_size, w1:w1 + fine_size]
-            img_B = img_B[h1:h1 + fine_size, w1:w1 + fine_size]
+            img_B = img_B[h1:h1 + fine_size, w1:w1 + fine_size]'''
 
-            if np.random.random() > 0.5:
-                img_A = np.fliplr(img_A)
-                img_B = np.fliplr(img_B)
-        else:
+        if np.random.random() > 0.5:
+            img_A = np.fliplr(img_A)
+            img_B = np.fliplr(img_B)
+        '''else:
             img_A = scipy.misc.imresize(img_A, [fine_size, fine_size])
-            img_B = scipy.misc.imresize(img_B, [fine_size, fine_size])
+            img_B = scipy.misc.imresize(img_B, [fine_size, fine_size])'''
 
-        img_A = img_A / 127.5 - 1.
-        img_B = img_B / 127.5 - 1.
+        halfmaxA = np.max(img_A)/2.0
+        halfmaxB = np.max(img_B)/2.0
+        img_A = img_A / halfmaxA - 1.
+        img_B = img_B / halfmaxB - 1.
         img_A = np.expand_dims(img_A, axis=2)
         img_B = np.expand_dims(img_B, axis=2)
         img_AB = np.concatenate((img_A, img_B), axis=2)
@@ -104,8 +106,8 @@ def load_train_data(image_path, load_size=286, fine_size=256, is_testing=False, 
 def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale = False):
     return transform(imread(image_path, is_grayscale), image_size, is_crop, resize_w)
 
-def save_images(images, size, image_path):
-    return imsave(inverse_transform(images), size, image_path)
+def save_images(images, size, image_path, is_us=False):
+    return imsave(inverse_transform(images), size, image_path, is_us)
 
 def imread(path, is_grayscale = False):
     if (is_grayscale):
@@ -122,7 +124,7 @@ def matread(path):
 def merge_images(images, size):
     return inverse_transform(images)
 
-def merge(images, size, is_grayscale=True):
+def merge(images, size, is_grayscale=True, is_us=False):
     h, w = images.shape[1], images.shape[2]
     if is_grayscale:
         img = np.zeros((h * size[0], w * size[1], 1))
@@ -135,13 +137,14 @@ def merge(images, size, is_grayscale=True):
         x_max = np.max(image)
         image-= x_min
         image/= (x_max-x_min)
-        image = np.log(image*D+1)/np.log(D+1)
+        if is_us:
+            image = np.log(image*D+1)/np.log(D+1)
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
     return img
 
-def imsave(images, size, path):
-    return scipy.misc.imsave(path, np.squeeze(merge(images, size)))
+def imsave(images, size, path, is_us=False):
+    return scipy.misc.imsave(path, np.squeeze(merge(images, size,is_us=False)))
 
 def center_crop(x, crop_h, crop_w,
                 resize_h=64, resize_w=64):
