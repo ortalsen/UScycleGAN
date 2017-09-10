@@ -12,7 +12,7 @@ from scipy.io import loadmat, savemat
 pp = pprint.PrettyPrinter()
 
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
-D=20
+D=1000
 # -----------------------------
 # new added functions for cyclegan
 class ImagePool(object):
@@ -107,6 +107,9 @@ def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale = 
     return transform(imread(image_path, is_grayscale), image_size, is_crop, resize_w)
 
 def save_images(images, size, image_path, is_us=False):
+    img_mat = inverse_transform(images)
+    dict_mat={'env':img_mat}
+    savemat(image_path[:-3]+'mat',dict_mat)
     return imsave(inverse_transform(images), size, image_path, is_us)
 
 def imread(path, is_grayscale = False):

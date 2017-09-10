@@ -18,6 +18,7 @@ class cyclegan(object):
         self.input_c_dim = args.input_nc
         self.output_c_dim = args.output_nc
         self.L1_lambda = args.L1_lambda
+        self.ID_lambda = args.ID_lambda
         self.dataset_dir = args.dataset_dir
 
         self.discriminator = discriminator
@@ -56,16 +57,24 @@ class cyclegan(object):
 
         self.DB_fake = self.discriminator(self.fake_B, self.options, reuse=False, name="discriminatorB")
         self.DA_fake = self.discriminator(self.fake_A, self.options, reuse=False, name="discriminatorA")
+
+        '''Identity loss'''
+        self.id_loss_A2BvsA = abs_criterion(self.real_A, self.fake_B)
+        self.id_loss_B2AvsB = abs_criterion(self.real_B, self.fake_A)
         self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_)
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+                        + self.ID_lambda * self.id_loss_A2BvsA
         self.g_loss_b2a = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_)
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+                          + self.ID_lambda * self.id_loss_B2AvsB
         self.g_loss = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
             + self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_)
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+                      + self.ID_lambda * self.id_loss_A2BvsA \
+                      + self.ID_lambda * self.id_loss_B2AvsB
 
         self.fake_A_sample = tf.placeholder(tf.float32,
                                             [None, self.image_size, self.image_size,
@@ -85,6 +94,8 @@ class cyclegan(object):
         self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
         self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
         self.d_loss = self.da_loss + self.db_loss
+
+
 
         self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
         self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
@@ -227,8 +238,10 @@ class cyclegan(object):
         self.sess.run(init_op)
         if args.which_direction == 'AtoB':
             sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
+            is_us = True
         elif args.which_direction == 'BtoA':
             sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
+            is_us = False
         else:
             raise Exception('--which_direction must be AtoB or BtoA')
 
@@ -250,10 +263,11 @@ class cyclegan(object):
             print('Processing image: ' + sample_file)
             sample_image = [load_test_data(sample_file, args.fine_size)]
             sample_image = np.array(sample_image).astype(np.float32)
+            sample_image = np.expand_dims(sample_image, 3)
             image_path = os.path.join(args.test_dir,
-                                      '{0}_{1}'.format(args.which_direction, os.path.basename(sample_file)))
+                                      '{0}_{1}'.format(args.which_direction, os.path.basename(sample_file)[:-3]+'jpg'))
             fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
-            save_images(fake_img, [1, 1], image_path)
+            save_images(fake_img, [1, 1], image_path, is_us=is_us)
             index.write("<td>%s</td>" % os.path.basename(image_path))
             index.write("<td><img src='%s'></td>" % (sample_file if os.path.isabs(sample_file) else (
                 '..' + os.path.sep + sample_file)))
